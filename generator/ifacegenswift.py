@@ -66,8 +66,8 @@ def writeSwiftTypeSuperInit( fileOut, superType ):
 	for fieldName in superType.allFieldNames():
 		fieldType = superType.fieldType( fieldName )
 		fieldAlias = superType.fieldAlias( fieldName )
-		fileOut.write( prefx + capitalizeFirstLetter( fieldAlias ) + ': ' + fieldAlias )
-		prefix = ", "
+		fileOut.write( prefx + fieldAlias + ': ' + fieldAlias )
+		prefx = ", "
 	fileOut.write(')')	
 
 def writeSwiftTypeInit( fileOut, genType ):
@@ -76,7 +76,6 @@ def writeSwiftTypeInit( fileOut, genType ):
 	for fieldName in genType.allFieldNames():
 		fieldType = genType.fieldType(fieldName)
 		fieldAlias = genType.fieldAlias(fieldName)
-#		fileOut.write( prefx + capitalizeFirstLetter(fieldAlias) + ':(' + assumeSwiftType(fieldType) + optionalValue + ')' + fieldAlias )
 		fileOut.write(prefix + fieldAlias + ": " + assumeSwiftType(fieldType) + optionalValue )
 		prefix = ", "
 	fileOut.write(")\n")
@@ -135,7 +134,8 @@ def writeSwiftType( fileOut, genType, writeConstructors, writeDump ):
 		fileOut.write('{\n')
 		fileOut.write('\tsuper.init()\n')
 		fileOut.write('\tif ( dictionary == nil ) { return nil }\n')	
-		fileOut.write('\t\tself.readDictionary(dictionary)\n')
+		fileOut.write('\tself.readDictionary(dictionary)\n')
+		fileOut.write('\t}\n')
 
 		writeSwiftTypeInitData( fileOut )
 		fileOut.write('{\n')
@@ -152,9 +152,9 @@ def writeSwiftMethod( fileOut, method ):
 	if len(method.prerequestTypes) + len(method.requestTypes) > 1:
 		argDecoration = ",\n\t\t"
 
-	fileOut.write( "func " + method.name )
+	fileOut.write( "func " + method.name + "(")
 
-	pref = "With("
+	pref = ""
 
 	prerequestFormalType = method.formalPrerequestType();
 	requestFormalType = method.formalRequestType();
@@ -165,18 +165,17 @@ def writeSwiftMethod( fileOut, method ):
 			argType = prerequestFormalType.fieldType(argName)
 			argAlias = prerequestFormalType.fieldAlias(argName)
 			typeStr = assumeSwiftType( argType )
-			fileOut.write( pref + capitalizeFirstLetter( argAlias ) + " " + argAlias + ":" + typeStr + optionalValue )
-			pref = argDecoration + "and"
+			fileOut.write( pref + argAlias + ":" + typeStr + optionalValue )
+			pref = ", "
 
 	if len(method.requestTypes) != 0:
 		for argName in requestFormalType.fieldNames():
 			argType = requestFormalType.fieldType(argName)
 			argAlias = requestFormalType.fieldAlias(argName)
 			typeStr = assumeSwiftType( argType )
-			fileOut.write( pref + capitalizeFirstLetter( argAlias ) + " " + argAlias + ":" + typeStr + optionalValue  )
-			pref = argDecoration + "and"
+			fileOut.write( pref + argAlias + ":" + typeStr + optionalValue )
 
-	fileOut.write( pref + "Error, inout error: NSError" + optionalValue)
+	fileOut.write( pref + " inout error: NSError" + optionalValue)
 
 	if method.responseType is not None:
 		if isinstance( method.responseType, GenListType ):
@@ -200,7 +199,7 @@ def writeSwiftMethod( fileOut, method ):
 		for argName in prerequestFormalType.fieldNames():
 			arg = prerequestFormalType.fieldType(argName)
 			argAlias = prerequestFormalType.fieldAlias(argName)
-			fileOut.write(argName + " : " + decorateSwiftInputType( argAlias, arg ) )
+			fileOut.write(pref + '"' + argName + '" : ' + decorateSwiftInputType( argAlias, arg ) )
 			pref = ',\n\t\t'
 		fileOut.write('\n\t])\n')
 
