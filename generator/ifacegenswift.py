@@ -51,13 +51,13 @@ def assumeSwiftType( genType ):
 		if t == "double":
 			return "Double";
 		if t == "raw":
-			return "[String : AnyObject!]"; #"NSDictionary";
+			return "[String : AnyObject]"; #"NSDictionary";
 		if t == "rawstr":
-			return "[String : AnyObject!]"; #"NSDictionary";
+			return "[String : AnyObject]"; #"NSDictionary";
 	if isinstance( genType, GenComplexType ):
 		return genType.name
 	if isinstance( genType, GenListType ):
-		return '[AnyObject!]';
+		return '[AnyObject]';
 	return "_ERROR_"
 
 ##############
@@ -65,8 +65,8 @@ def writeHeader( fileOut ):
 	fileOut.write("import Foundation\n")
 
 def writeNULLABLEfunc( fileOut ):
-	fileOut.write("\nprivate func NULLABLE(object: AnyObject?) -> AnyObject {\n")
-	fileOut.write("\treturn object!\n") #object == nil ? NSNull() : object\n")
+	fileOut.write("\nprivate func NULLABLE(object: AnyObject!) -> AnyObject {\n")
+	fileOut.write("\treturn object == nil ? NSNull() : object\n")
 	fileOut.write("}\n")
 
 def writeSwiftTypeSuperInit( fileOut, superType ):
@@ -114,13 +114,13 @@ def writeSwiftType( fileOut, genType, writeConstructors, writeDump ):
 			fileOut.write("var " + genType.fieldAlias( fieldName ) + ": " + assumeSwiftType( fieldType ) + optionalValue + "\n")
 		
 	if writeDump:
-		writeNULLABLEfunc( fileOut )
 		fileOut.write("\nfunc dumpWithError(inout error: NSError?) -> NSData? {\n")
 		fileOut.write("\t var outDict = ")
 		unwindInputTypeToSwift( fileOut, genType, 'self', 2 )
 		fileOut.write("\n")
 		fileOut.write("\treturn NSJSONSerialization.dataWithJSONObject(outDict, options: .PrettyPrinted, error:&error)\n}\n")
 	if writeConstructors:
+		writeNULLABLEfunc( fileOut )
 		writeSwiftDefaultInit( fileOut )
 		fileOut.write("\n")
 		writeSwiftTypeInit( fileOut, genType)
@@ -213,7 +213,7 @@ def writeSwiftMethod( fileOut, method ):
 		for argName in prerequestFormalType.fieldNames():
 			arg = prerequestFormalType.fieldType(argName)
 			argAlias = prerequestFormalType.fieldAlias(argName)
-			fileOut.write(pref + '"' + argName + '" : ' + decorateSwiftInputType( argAlias, arg ) )
+			fileOut.write(pref + '"' + argName + '" : ' + "self.NULLABLE(" + decorateSwiftInputType( argAlias, arg ) + ")")
 			pref = ',\n\t\t'
 		fileOut.write('\n\t])\n')
 
@@ -461,6 +461,7 @@ def processJSONIface( jsonFile, typeNamePrefix, outDir ):
 		writeSwiftType( swiftCIface, module.typeList[genTypeKey], writeDump=writeAll, writeConstructors=writeAll )
 
 	writeSwiftIface( swiftCIface, module.name )
+	writeNULLABLEfunc( swiftCIface )
 	if len( module.methods ) != 0:
 		swiftCIface.write("\n/* methods */\n\n")
 
