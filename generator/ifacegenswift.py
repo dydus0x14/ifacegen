@@ -245,11 +245,11 @@ def writeSwiftMethod( fileOut, method ):
 
 	outputName = 'output'
 
-	outputStatement = "var " + outputName + ': NSDictionary?'
+	outputStatement ='[String : AnyObject]'
 	if isinstance( method.responseType, GenListType ):
-		outputStatement = "var " + outputName + ": [AnyObject]!"
+		outputStatement ='[AnyObject]'
 
-	fileOut.write('\t' + outputStatement + ' = NSJSONSerialization.JSONObjectWithData(outputData, options: .AllowFragments, error:&er) as? [AnyObject] \n');
+	fileOut.write('\t' +  "var " + outputName + ': ' + outputStatement + '! = NSJSONSerialization.JSONObjectWithData(outputData, options: .AllowFragments, error:&er) as? ' +  outputStatement + '\n');
 	fileOut.write('\tif ( error != nil ) {\n\t\terror = er\n\t\treturn nil\n\t}\n')
 
 	retVal = unwindReturnedTypeToSwift( fileOut, outputName, method.responseType, method.responseArgName, 1, tmpVarName )
@@ -262,7 +262,7 @@ def decorateSwiftReturnedType( levelTmpVar, objcRetTypeStr, retType ):
 # TODO: check it	
 	formatNSNumberStr = "({1} as? {3})?.{4}"#'( {0} = {1}, {0}.isEqual(NSNull()) ? {2} : ({0} as {3}).{4} )'
 	formatNSStringStr = '{1} as? String'
-	formatNSDictionaryStr = '{1} as? NSDictionary'
+	formatNSDictionaryStr = '{1} as? [String : AnyObject]'
 	formatRawNSDictionaryStr = '( {0} = {1}, {0}.isEqual(NSNull()) ? nil : (NSJSONSerialization JSONObjectWithData:(({0} as String).dataUsingEncoding:NSUTF8StringEncoding(), options: .AllowFragments, error:&error) )'		
 	if retType.sType == "bool":
 		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, 'false', 'NSNumber', 'boolValue' )
@@ -301,9 +301,6 @@ def unwindReturnedTypeToSwift( fileOut, objcDictName, outType, outArgName, level
 
 		if outArgName is not None and outArgName != 'self':
 			currentDictName = objcDictName + capitalizeFirstLetter( outArgName ) + str( newVariableCounter() )
-			#fileOut.write('\t'*level + "var " + currentDictName + ':NSDictionary = ' + objcDictName + '["' + outArgName + '"]\n')
-			#fileOut.write('\t'*level + 'if ( ' + currentDictName + ' != nil ) {\n') #  && !' + currentDictName + '.isEqual(NSNull())) {\n')
-			#if let dictContacts24 = dict["contacts"] as? Dictionary<String,AnyObject>  {
 			fileOut.write('\t'*level + 'if let ' + currentDictName + ' = ' + objcDictName + '["' + outArgName + '"] as? Dictionary<String,AnyObject>  {\n')
 			level += 1
  			fileOut.write( '\t'*level + resName + ' = ' + objCResType + '()\n' )
