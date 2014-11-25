@@ -70,7 +70,7 @@ def writeOBJCTypeSuperInitDeclaration( fileOut, superType ):
 	fileOut.write(']')	
 
 def writeOBJCTypeInitDeclaration( fileOut, genType, implementation ):
-	fileOut.write('- (id)init')
+	fileOut.write('- (instancetype)init')
 	prefx = "With"
 	for fieldName in genType.allFieldNames():
 		fieldType = genType.fieldType(fieldName)
@@ -82,12 +82,12 @@ def writeOBJCTypeInitDeclaration( fileOut, genType, implementation ):
 		fileOut.write(';\n')
 
 def writeOBJCTypeInitDictDeclaration( fileOut, implementation ):
-	fileOut.write('- (id)initWithDictionary:(NSDictionary*)dictionary error:(NSError* __autoreleasing*)error')
+	fileOut.write('- (instancetype)initWithDictionary:(NSDictionary*)dictionary error:(NSError* __autoreleasing*)error')
 	if not implementation:
 		fileOut.write(';\n')
 
 def writeOBJCTypeInitDataDeclaration( fileOut, implementation ):
-	fileOut.write('- (id)initWithJSONData:(NSData*)jsonData error:(NSError* __autoreleasing*)error')
+	fileOut.write('- (instancetype)initWithJSONData:(NSData*)jsonData error:(NSError* __autoreleasing*)error')
 	if not implementation:
 		fileOut.write(';\n')
 
@@ -129,6 +129,10 @@ def writeOBJCMethodDeclaration( fileOut, method, implementation ):
 		fileOut.write("- (void)" + method.name )
 	
 	pref = "With"
+
+	if method.prefix is None:
+		fileOut.write( pref + "Prefix:(NSString*)prefix")
+		pref = argDecoration + "and"		
 
 	prerequestFormalType = method.formalPrerequestType();
 	requestFormalType = method.formalRequestType();
@@ -373,6 +377,10 @@ def writeOBJCMethodImplementation( fileOut, method ):
 			pref = ',\n\t\t'
 		fileOut.write('\n\t}];\n')
 
+	methodPrefix = "prefix"
+	if method.prefix is not None:
+		methodPrefix = '@"' + method.prefix + '"'
+
 	if requestFormalType is not None:		
 		fileOut.write("\tNSDictionary* inputDict = ")
 		unwindInputTypeToOBJC( fileOut, method.formalRequestType(), None, 2 )
@@ -380,9 +388,9 @@ def writeOBJCMethodImplementation( fileOut, method ):
 		fileOut.write(";\n")
 
 		fileOut.write("\tNSData* inputData = [NSJSONSerialization dataWithJSONObject:inputDict options:jsonFormatOption error:error];\n")
-		fileOut.write('\tif ( ![transport writeAll:inputData prefix:@"' + method.prefix + '" error:error] ) {\n')
+		fileOut.write('\tif ( ![transport writeAll:inputData prefix:' + methodPrefix + ' error:error] ) {\n')
 	else:
-		fileOut.write('\tif ( ![transport writeAll:nil prefix:@"' + method.prefix + '" error:error] ) {\n')
+		fileOut.write('\tif ( ![transport writeAll:nil prefix:' + methodPrefix + ' error:error] ) {\n')
 
 	# fileOut.write('\t\tNSLog(@"' + method.name + ': server call failed, %@", *error);\n')
 
@@ -421,7 +429,7 @@ def writeObjCIfaceImports( fileOut, importNames ):
 
 def writeObjCIfaceDeclaration( fileOut, inputName ):
 	fileOut.write("\n@interface " + inputName + ": NSObject\n")
-	fileOut.write("\n- (id)initWithTransport:(id<IFTransport>)transport;\n\n")
+	fileOut.write("\n- (instancetype)initWithTransport:(id<IFTransport>)transport;\n\n")
 
 def writeObjCIfaceFooter( fileOut, inputName ):
 	fileOut.write("\n@end")
@@ -435,7 +443,7 @@ def writeObjCImplHeader( fileOut, inputName ):
 def writeObjCImplDeclaration( fileOut, inputName ):
 	fileOut.write("\n@interface " + inputName + "() {\n\tid<IFTransport> transport;\n}\n@end\n")
 	fileOut.write("\n@implementation " + inputName + "\n")
-	fileOut.write("\n- (id)initWithTransport:(id<IFTransport>)trans {\n")
+	fileOut.write("\n- (instancetype)initWithTransport:(id<IFTransport>)trans {\n")
 	fileOut.write("\tif ( self = [super init] ) {\n\t\ttransport = trans;\n\t}\n\treturn self;\n}\n")
 	fileOut.write('- (NSError*)errorWithMessage:(NSString*)msg {\n')
 	fileOut.write('\tNSDictionary* errData = [NSDictionary dictionaryWithObject:msg forKey:NSLocalizedDescriptionKey];\n')
