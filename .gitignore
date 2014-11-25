@@ -8,3 +8,4 @@ ifacegen.example/ifacegen.example.xcworkspace
 ifacegen.example/Pods
 ifacegen.test/ifacegen.test.test/test.h
 ifacegen.test/ifacegen.test.test/test.m
+ifacegen.test/ifacegen.test.test/test.swift

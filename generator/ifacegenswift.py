@@ -1,4 +1,4 @@
-# Created by Evgeny Kamyshanov on November, 2014
+# Created by Anton Davydov on November, 2014
 # Copyright (c) 2013-2014 BEFREE Ltd. 
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -64,11 +64,6 @@ def assumeSwiftType( genType ):
 def writeHeader( fileOut ):
 	fileOut.write("import Foundation\n")
 
-def writeNULLABLEfunc( fileOut ):
-	fileOut.write("\nprivate func NULLABLE(object: AnyObject!) -> AnyObject {\n")
-	fileOut.write("\treturn object == nil ? NSNull() : object\n")
-	fileOut.write("}\n")
-
 def writeSwiftTypeSuperInit( fileOut, superType ):
 	fileOut.write('super.init(')
 	prefx = ""
@@ -113,15 +108,8 @@ def writeSwiftType( fileOut, genType, writeConstructors, writeDump ):
 		else:
 			fileOut.write("var " + genType.fieldAlias( fieldName ) + ": " + assumeSwiftType( fieldType ) + optionalValue + "\n")
 		
-	if writeDump:
-		fileOut.write("\nfunc dumpWithError(inout error: NSError?) -> NSData? {\n")
-		fileOut.write("\t var outDict = ")
-		unwindInputTypeToSwift( fileOut, genType, 'self', 2 )
-		fileOut.write("\n")
-		fileOut.write("\treturn NSJSONSerialization.dataWithJSONObject(outDict, options: .PrettyPrinted, error:&error)\n}\n")
+	writeSwiftDefaultInit( fileOut )
 	if writeConstructors:
-		writeNULLABLEfunc( fileOut )
-		writeSwiftDefaultInit( fileOut )
 		fileOut.write("\n")
 		writeSwiftTypeInit( fileOut, genType)
 		fileOut.write('{\n')
@@ -158,6 +146,12 @@ def writeSwiftType( fileOut, genType, writeConstructors, writeDump ):
 		fileOut.write('\t\tif ( error != nil ) {\n\t\t\treturn nil\n\t\t}\n')		
 		fileOut.write('\t\tself.readDictionary(dict!)\n')
 		fileOut.write('\t}\n')
+	if writeDump:
+		fileOut.write("\nfunc dumpWithError(inout error: NSError?) -> NSData? {\n")
+		fileOut.write("\t var outDict = ")
+		unwindInputTypeToSwift( fileOut, genType, 'self', 2 )
+		fileOut.write("\n")
+		fileOut.write("\treturn NSJSONSerialization.dataWithJSONObject(outDict, options: .PrettyPrinted, error:&error)\n}\n")
 	fileOut.write("}\n")
 
 def writeSwiftMethod( fileOut, method ):
@@ -213,7 +207,7 @@ def writeSwiftMethod( fileOut, method ):
 		for argName in prerequestFormalType.fieldNames():
 			arg = prerequestFormalType.fieldType(argName)
 			argAlias = prerequestFormalType.fieldAlias(argName)
-			fileOut.write(pref + '"' + argName + '" : ' + "self.NULLABLE(" + decorateSwiftInputType( argAlias, arg ) + ")")
+			fileOut.write(pref + '"' + argName + '" : ' + "{$0 == nil ? NSNull() : $0}(" + decorateSwiftInputType( argAlias, arg ) + ")")
 			pref = ',\n\t\t'
 		fileOut.write('\n\t])\n')
 
@@ -267,7 +261,7 @@ def decorateSwiftReturnedType( levelTmpVar, objcRetTypeStr, retType ):
 	if retType.sType == "bool":
 		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, 'false', 'NSNumber', 'boolValue' )
 	if retType.sType == "int32":
-		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, '0', 'NSNumber', 'intValue' )
+		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, '0', 'NSNumber', 'integerValue' )
 	if retType.sType == "int64":
 		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, '0', 'NSNumber', 'longValue' )
 	if retType.sType == "double":
@@ -337,7 +331,7 @@ def unwindReturnedTypeToSwift( fileOut, objcDictName, outType, outArgName, level
 		else:
 			resName = "array" + str(level)
 
-		fileOut.write('\t'*level + "var " + resName + ': [AnyObject] = []'  + '\n')
+		fileOut.write('\t'*level + "var " + resName + ': [AnyObject]!\n')
 
 		fileOut.write('\t'*level + 'if ( ' + currentArrayName + ' != nil ) {\n')
 		level += 1
@@ -355,7 +349,7 @@ def unwindReturnedTypeToSwift( fileOut, objcDictName, outType, outArgName, level
 		return resName
 
 def decorateSwiftInputType( objcInpTypeStr, inpType ):
-	prefix = "self.NULLABLE("
+	prefix = "{$0 == nil ? NSNull() : $0}("
 	suffix = ")"
 	if inpType.sType == 'bool':
 		prefix = 'NSNumber(bool: '
@@ -402,7 +396,7 @@ def unwindInputTypeToSwift( fileOut, inputType, inputArgName, level  ):
 				#fileOut.write( 'self.NULLABLE(' + inputArgName + ')' )
 				fileOut.write(inputArgName)
 			else:
-				fileOut.write('{ (inArr: [AnyObject]) -> ([AnyObject]) in \n' + '\t'*level + 'var resArr: [AnyObject] = []\n') #NSMutableArray(capacity: inArr.count)\n')
+				fileOut.write('{ (inArr: [AnyObject]!) -> (AnyObject!) in \n' + '\t'*level + 'if inArr == nil { return NSNull() }\n' + '\t'*level + 'var resArr: [AnyObject] = []\n')
 				fileOut.write('\t'*level + 'for ' + ' inObj in inArr {\n' ) 
 				fileOut.write('\t'*level + '\tresArr.append(')
 				unwindInputTypeToSwift( fileOut, inputType.itemType, '(inObj as ' + assumeSwiftType(inputType.itemType) + ')', level+2 )
@@ -458,7 +452,6 @@ def processJSONIface( jsonFile, typeNamePrefix, outDir ):
 		writeSwiftType( swiftCIface, module.typeList[genTypeKey], writeDump=writeAll, writeConstructors=writeAll )
 
 	writeSwiftIface( swiftCIface, module.name )
-	writeNULLABLEfunc( swiftCIface )
 	if len( module.methods ) != 0:
 		swiftCIface.write("\n/* methods */\n\n")
 
@@ -470,7 +463,6 @@ def main():
 	parser = argparse.ArgumentParser(description='JSON-Swift interface generator')
 	
 	parser.add_argument('rpcInput', metavar='I', type=unicode, nargs = '+', help = 'Input JSON RPC files')
-	parser.add_argument('--prefix', action='store', required=False, help='Class and methods prefix')
 	parser.add_argument('-o', '--outdir', action='store', default="gen-swift", required=False, help="Output directory name")
 
 	parsedArgs = parser.parse_args()
@@ -480,7 +472,7 @@ def main():
 
 	try:
 		for rpcInput in parsedArgs.rpcInput:
-			processJSONIface( rpcInput, parsedArgs.prefix, parsedArgs.outdir )
+			processJSONIface( rpcInput, "", parsedArgs.outdir )
 	except Exception as ex:
 		print( str(ex) )
 		sys.exit(1)

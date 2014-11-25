@@ -7,12 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3A82A6D21A246DFF00477FFB /* test.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A82A6D11A246DFF00477FFB /* test.swift */; };
 		C156F3C81A20994B004FB842 /* ifacegen_test_test.swift in Sources */ = {isa = PBXBuildFile; fileRef = C156F3C71A20994B004FB842 /* ifacegen_test_test.swift */; };
 		C156F3CE1A209B23004FB842 /* test.json in Resources */ = {isa = PBXBuildFile; fileRef = C156F3CD1A209B23004FB842 /* test.json */; };
 		C156F3D11A209B49004FB842 /* test.m in Sources */ = {isa = PBXBuildFile; fileRef = C156F3D01A209B49004FB842 /* test.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3A82A6D11A246DFF00477FFB /* test.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = test.swift; sourceTree = "<group>"; };
 		C156F3BA1A2088E4004FB842 /* IFHTTPTransport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IFHTTPTransport.h; path = ../transport/IFHTTPTransport.h; sourceTree = "<group>"; };
 		C156F3BB1A2088E4004FB842 /* IFHTTPTransport.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = IFHTTPTransport.m; path = ../transport/IFHTTPTransport.m; sourceTree = "<group>"; };
 		C156F3BC1A2088E4004FB842 /* IFHTTPTransport+Protected.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "IFHTTPTransport+Protected.h"; path = "../transport/IFHTTPTransport+Protected.h"; sourceTree = "<group>"; };
@@ -70,6 +72,7 @@
 			children = (
 				C156F3CF1A209B49004FB842 /* test.h */,
 				C156F3D01A209B49004FB842 /* test.m */,
+				3A82A6D11A246DFF00477FFB /* test.swift */,
 				C156F3CD1A209B23004FB842 /* test.json */,
 				C156F3C71A20994B004FB842 /* ifacegen_test_test.swift */,
 				C156F3C51A20994B004FB842 /* Supporting Files */,
@@ -161,7 +164,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "python ../generator/ifacegen.py -o ifacegen.test.test/ --prefix OBC ifacegen.test.test/test.json";
+			shellScript = "python ../generator/ifacegen.py -o ifacegen.test.test/ --prefix OBC ifacegen.test.test/test.json\npython ../generator/ifacegenswift.py -o ifacegen.test.test/ ifacegen.test.test/test.json";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -171,6 +174,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C156F3C81A20994B004FB842 /* ifacegen_test_test.swift in Sources */,
+				3A82A6D21A246DFF00477FFB /* test.swift in Sources */,
 				C156F3D11A209B49004FB842 /* test.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
