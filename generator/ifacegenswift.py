@@ -65,7 +65,7 @@ def writeHeader( fileOut ):
 	fileOut.write("import Foundation\n")
 
 def writeSwiftTypeSuperInit( fileOut, superType ):
-	fileOut.write('super.init(')
+	fileOut.write('\t\tsuper.init(')
 	prefx = ""
 	for fieldName in superType.allFieldNames():
 		fieldType = superType.fieldType( fieldName )
@@ -75,10 +75,10 @@ def writeSwiftTypeSuperInit( fileOut, superType ):
 	fileOut.write(')')	
 
 def writeSwiftDefaultInit( fileOut ):
-	fileOut.write('\ninit() {}\n')
+	fileOut.write('\n\tinit() {}\n')
 
 def writeSwiftTypeInit( fileOut, genType ):
-	fileOut.write('\ninit?(')
+	fileOut.write('\tinit?(')
 	prefix = ""
 	for fieldName in genType.allFieldNames():
 		fieldType = genType.fieldType(fieldName)
@@ -88,10 +88,10 @@ def writeSwiftTypeInit( fileOut, genType ):
 	fileOut.write(")\n")
 
 def writeSwiftTypeInitDict( fileOut ):
-	fileOut.write('\ninit?(dictionary: [String : AnyObject]!, inout error: NSError?)')
+	fileOut.write('\n\tinit?(dictionary: [String : AnyObject]!, inout error: NSError?)')
 
 def writeSwiftTypeInitData( fileOut ):
-	fileOut.write('\ninit?(jsonData: NSData!, inout error: NSError?)')
+	fileOut.write('\n\tinit?(jsonData: NSData!, inout error: NSError?)')
 
 def writeSwiftType( fileOut, genType, writeConstructors, writeDump ):
 	if isinstance( genType, GenIntegralType ) or isinstance( genType, GenListType ):
@@ -114,7 +114,7 @@ def writeSwiftType( fileOut, genType, writeConstructors, writeDump ):
 	if writeConstructors:
 		fileOut.write("\n")
 		writeSwiftTypeInit( fileOut, genType)
-		fileOut.write('{\n')
+		fileOut.write('\t{\n')
 		if genType.baseType is not None:
 			fileOut.write('\t')
 			writeSwiftTypeSuperInit( fileOut, genType.baseType )
@@ -128,32 +128,32 @@ def writeSwiftType( fileOut, genType, writeConstructors, writeDump ):
 			fileOut.write('\t\t' + self + fieldAlias + ' = ' + fieldAlias + '\n' )
 		fileOut.write('\t}\n')
 
-		fileOut.write('\nfunc readDictionary(dict: [String : AnyObject]) {\n')
+		fileOut.write('\n\tfunc readDictionary(dict: [String : AnyObject]) {\n')
 		#fileOut.write('\tvar tmp: AnyObject?\n\t var error:NSError?\n')
-		unwindReturnedTypeToSwift( fileOut, 'dict', genType, 'self', level=1, tmpVarName='tmp' )
-		fileOut.write('}\n')
+		unwindReturnedTypeToSwift( fileOut, 'dict', genType, 'self', level=2, tmpVarName='tmp' )
+		fileOut.write('\t}\n')
 
 		writeSwiftTypeInitDict( fileOut )
 		fileOut.write('{\n')
 		#fileOut.write('\tsuper.init()\n')
-		fileOut.write('\tif ( dictionary == nil ) { return nil }\n')	
-		fileOut.write('\tself.readDictionary(dictionary)\n')
+		fileOut.write('\t\tif ( dictionary == nil ) { return nil }\n')	
+		fileOut.write('\t\tself.readDictionary(dictionary)\n')
 		fileOut.write('\t}\n')
 
 		writeSwiftTypeInitData( fileOut )
 		fileOut.write('{\n')
 		#fileOut.write('\tsuper.init()\n')
-		fileOut.write('\tif ( jsonData == nil ) { return nil }\n')		
+		fileOut.write('\t\tif ( jsonData == nil ) { return nil }\n')		
 		fileOut.write('\t\tvar dict = NSJSONSerialization.JSONObjectWithData(jsonData, options:.AllowFragments, error:&error) as? [String : AnyObject]\n');
 		fileOut.write('\t\tif ( error != nil ) {\n\t\t\treturn nil\n\t\t}\n')		
 		fileOut.write('\t\tself.readDictionary(dict!)\n')
 		fileOut.write('\t}\n')
 	if writeDump:
-		fileOut.write("\nfunc dump(inout error: NSError?) -> NSData? {\n")
-		fileOut.write("\t var outDict: [String : AnyObject] = ")
-		unwindInputTypeToSwift( fileOut, genType, 'self', 2 )
+		fileOut.write("\n\tfunc dump(inout error: NSError?) -> NSData? {\n")
+		fileOut.write("\t\tvar outDict: [String : AnyObject] = ")
+		unwindInputTypeToSwift( fileOut, genType, 'self', 3 )
 		fileOut.write("\n")
-		fileOut.write("\treturn NSJSONSerialization.dataWithJSONObject(outDict, options: .PrettyPrinted, error:&error)\n}\n")
+		fileOut.write("\t\treturn NSJSONSerialization.dataWithJSONObject(outDict, options: .PrettyPrinted, error:&error)\n\t}\n")
 	fileOut.write("}\n")
 
 def writeSwiftMethod( fileOut, method ):
@@ -161,7 +161,7 @@ def writeSwiftMethod( fileOut, method ):
 	if len(method.prerequestTypes) + len(method.requestTypes) > 1:
 		argDecoration = ",\n\t\t"
 
-	fileOut.write( "func " + method.name + "(")
+	fileOut.write( "\tfunc " + method.name + "(")
 	pref = ""
 	prerequestFormalType = method.formalPrerequestType();
 	requestFormalType = method.formalRequestType();
@@ -290,7 +290,10 @@ def unwindReturnedTypeToSwift( fileOut, objcDictName, outType, outArgName, level
 
 		optionalValueForAccess = optionalValue
 		if outArgName is None or outArgName != 'self':
-			fileOut.write('\t'*level + "var " + resName )# + ": " + objCResType + "?")
+			if objcDictName == 'item':
+				fileOut.write('\t'*level + "var " + resName )# + ": " + objCResType + "?")
+			else:
+				fileOut.write('\t'*(level-1) + "var " + resName )
 		else:		
 			resName = 'self'
 			optionalValueForAccess = ""
@@ -298,7 +301,7 @@ def unwindReturnedTypeToSwift( fileOut, objcDictName, outType, outArgName, level
 		if outArgName is not None and outArgName != 'self':
  			fileOut.write( ' = ' + objCResType + '()\n' )
 			currentDictName = objcDictName + capitalizeFirstLetter( outArgName ) + str( newVariableCounter() )
-			fileOut.write('\t'*level + 'if let ' + currentDictName + ' = ' + objcDictName + '["' + outArgName + '"] as? [String : AnyObject]  {\n')
+			fileOut.write('\t'*(level - 1) + 'if let ' + currentDictName + ' = ' + objcDictName + '["' + outArgName + '"] as? [String : AnyObject]  {\n')
  		elif outArgName != 'self':
  			fileOut.write( ' = ' + objCResType + '()\n' )
 
@@ -320,6 +323,7 @@ def unwindReturnedTypeToSwift( fileOut, objcDictName, outType, outArgName, level
 		return resName
 
 	if isinstance( outType, GenListType ):
+		level -= 1
 		if outArgName is None:
 			currentArrayName = objcDictName
 		else:
@@ -376,7 +380,7 @@ def unwindInputTypeToSwift( fileOut, inputType, inputArgName, level  ):
 					objcStatement = objcStatement + '?'
 				unwindInputTypeToSwift( fileOut, fieldType, objcStatement, level+1 )
 
-			fileOut.write("\n" + '\t'*level + "]")
+			fileOut.write("\n" + '\t'*(level-1) + "]")
 
 		elif isinstance( inputType, GenListType ):
 			if isinstance( inputType.itemType, GenIntegralType ):
@@ -387,7 +391,7 @@ def unwindInputTypeToSwift( fileOut, inputType, inputArgName, level  ):
 				fileOut.write('\t'*level + 'for ' + ' inObj in inArr {\n' ) 
 				fileOut.write('\t'*level + '\tresArr.append(')
 				unwindInputTypeToSwift( fileOut, inputType.itemType, 'inObj', level+2 )
-				fileOut.write( ')\n' + '\t'*level + '\t}\n' + '\t'*level + 'return resArr } ( ' + inputArgName + ' )' )
+				fileOut.write( ')\n' + '\t'*level + '}\n' + '\t'*level + 'return resArr } ( ' + inputArgName + ' )' )
 
 def writeWarning( fileOut, inputName ):
 	fileOut.write("/**\n")
@@ -397,13 +401,13 @@ def writeWarning( fileOut, inputName ):
 
 def writeSwiftIface( fileOut, inputName ):
 	fileOut.write("\nclass " + inputName + " {")
-	fileOut.write("\nvar transport: IFTransport\n")
-	fileOut.write("\ninit(transport: IFTransport) {\n")
+	fileOut.write("\n\tvar transport: IFTransport\n")
+	fileOut.write("\n\tinit(transport: IFTransport) {\n")
 	#fileOut.write("\tsuper.init()\n\t\n")
-	fileOut.write("\tself.transport = transport\n}\n")
-	fileOut.write('\nfunc errorWithMessage(msg: NSString!) -> NSError? {\n')
-	fileOut.write('\tvar errData: NSDictionary? = NSDictionary(object: msg, forKey: NSLocalizedDescriptionKey)\n')
-	fileOut.write('\treturn NSError(domain: "", code:0, userInfo:errData)\n}\n')
+	fileOut.write("\t\tself.transport = transport\n\t}\n")
+	fileOut.write('\n\tfunc errorWithMessage(msg: NSString!) -> NSError? {\n')
+	fileOut.write('\t\tvar errData: NSDictionary? = NSDictionary(object: msg, forKey: NSLocalizedDescriptionKey)\n')
+	fileOut.write('\t\treturn NSError(domain: "", code:0, userInfo:errData)\n\t}')
 	#here was NSStringFromClass	
 	
 
