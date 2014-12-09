@@ -32,7 +32,7 @@ class ifacegen_swift_test: XCTestCase {
         
         let swChild = EmployeeChildrenItem()
         swChild.name = "Name"
-        swChild.birthdate = Int(NSDate().timeIntervalSince1970)
+        swChild.birthdate = Int64(NSDate().timeIntervalSince1970)
         swEmployee1 = Employee(dictionaryFromRawStr: nil, dictionaryFromRaw: nil, name: "swEmp1", theId: 1111, dimension: 0.8, passport: swPassport, children: nil)
         swEmployee2 = Employee(dictionaryFromRawStr: [:], dictionaryFromRaw: [:], name: "swEmp2", theId: 111143, dimension: 10.8, passport: swPassport, children: [])
         swEmployee3 = Employee(dictionaryFromRawStr: dictionary, dictionaryFromRaw: dictionary, name: "swEmp3", theId: 1111432, dimension: 101.8, passport: swPassport, children: [swChild, swChild, swChild])

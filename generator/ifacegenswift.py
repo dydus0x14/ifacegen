@@ -45,9 +45,9 @@ def assumeSwiftType( genType ):
 		if t == 'bool':
 			return "Bool";
 		if t == "int32":
-			return "Int";
+			return "Int32";
 		if t == "int64":
-			return "Int";
+			return "Int64";
 		if t == "double":
 			return "Double";
 		if t == "raw":
@@ -261,9 +261,9 @@ def decorateSwiftReturnedType( levelTmpVar, objcRetTypeStr, retType ):
 	if retType.sType == "bool":
 		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, 'false', 'NSNumber', 'boolValue' )
 	if retType.sType == "int32":
-		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, '0', 'NSNumber', 'integerValue' )
+		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, '0', 'NSNumber', 'intValue' )
 	if retType.sType == "int64":
-		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, '0', 'NSNumber', 'longValue' )
+		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, '0', 'NSNumber', 'longLongValue' )
 	if retType.sType == "double":
 		return formatNSNumberStr.format( levelTmpVar, objcRetTypeStr, '0.0', 'NSNumber', 'doubleValue' )
 	if retType.sType == "string":
@@ -358,6 +358,12 @@ def decorateSwiftInputType( objcInpTypeStr, inpType ):
 	if inpType.sType == 'rawstr':
 		prefix = objcInpTypeStr + ' == nil ? NSNull() : NSString(data:NSJSONSerialization.dataWithJSONObject(self.checkNil('
 		suffix =  ') , options: NSJSONWritingOptions.PrettyPrinted, error:&error)!, encoding: NSUTF8StringEncoding)!'
+	if inpType.sType == 'int64':
+		prefix = objcInpTypeStr + " == nil ? NSNull() : NSNumber(longLong: "
+		suffix = '!)'
+	if inpType.sType == 'int32':
+		prefix = objcInpTypeStr + " == nil ? NSNull() : NSNumber(int: ("
+		suffix = ')!)'
 	return prefix + objcInpTypeStr + suffix
 
 def unwindInputTypeToSwift( fileOut, inputType, inputArgName, level  ):
