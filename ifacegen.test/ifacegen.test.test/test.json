@@ -3,6 +3,8 @@
 {
 "struct": "Employee",
 "typedef": {
+		"dictionaryFromRawStr":"rawstr",
+		"dictionaryFromRaw":"raw",
 		"name":"string",
 		"id":"int64",
 		"dimension":"double",

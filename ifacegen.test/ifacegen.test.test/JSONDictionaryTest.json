@@ -1,0 +1,6 @@
+{
+    "attribute1" : "value1",
+    "attribute2" : {
+        "attribute3" : "value3"
+    }
+}
