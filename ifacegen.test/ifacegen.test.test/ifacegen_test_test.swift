@@ -27,7 +27,7 @@ class ifacegen_test_test: XCTestCase {
         child.name = "Mary"
         child.birthdate = Int64(NSDate().timeIntervalSince1970)
 
-        employee0 = OBCEmployee(dictionaryFromRawStr: NSDictionary(), andDictionaryFromRaw: NSDictionary(), andName: "empl0", andTheId: 781341234, andDimension: 345.67, andPassport: self.pass, andChildren:[child])
+        employee0 = OBCEmployee(dictionaryFromRawStr: nil, andDictionaryFromRaw: nil, andName: "empl0", andTheId: 781341234, andDimension: 345.67, andPassport: self.pass, andChildren:[child])
         employee1 = OBCEmployee(dictionaryFromRawStr: NSDictionary(), andDictionaryFromRaw: NSDictionary(), andName: "empl1", andTheId: 87245, andDimension: 623.76, andPassport: self.pass, andChildren:[child, child])
         employer = OBCEmployer(stuff: [self.employee0, self.employee1], andInfo: ["review":"passed"])
     }
@@ -53,6 +53,8 @@ class ifacegen_test_test: XCTestCase {
         XCTAssertEqual(desEmployee0.name, "empl0", "Employee.name is wrong")
         XCTAssertTrue(desEmployee0.passport.theId == 786234, "Employee pass is wrong")
         XCTAssertTrue(desEmployee0.children.count == 1, "Children0 array is wrong" )
+        XCTAssertTrue(desEmployee0.dictionaryFromRawStr == nil, "Dictionary from rawstr is wrong" )
+        XCTAssertTrue(desEmployee0.dictionaryFromRaw == nil, "Dictionary from raw is wrong" )
         XCTAssertTrue(desEmployee1.children.count == 2, "Children1 array is wrong")
         
         let desChild = desEmployee1.children[1] as OBCEmployeeChildrenItem

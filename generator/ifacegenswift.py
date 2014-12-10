@@ -29,7 +29,6 @@ from collections import OrderedDict
 variableCounter = 0
 optionalValue = '?'
 self = 'self.'
-tab = 0
 
 def newVariableCounter():
 	global variableCounter
@@ -150,10 +149,12 @@ def writeSwiftType( fileOut, genType, writeConstructors, writeDump ):
 		fileOut.write('\t}\n')
 	if writeDump:
 		fileOut.write("\n\tfunc dump(inout error: NSError?) -> NSData? {\n")
+		fileOut.write("\t\tvar jsonFormatOption = NSJSONWritingOptions.allZeros\n")
+		fileOut.write("\t\t#if DEBUG\n\t\t\tjsonFormatOption = .PrettyPrinted\n\t\t#endif\n")
 		fileOut.write("\t\tvar outDict: [String : AnyObject] = ")
 		unwindInputTypeToSwift( fileOut, genType, 'self', 3 )
 		fileOut.write("\n")
-		fileOut.write("\t\treturn NSJSONSerialization.dataWithJSONObject(outDict, options: .PrettyPrinted, error:&error)\n\t}\n")
+		fileOut.write("\t\treturn NSJSONSerialization.dataWithJSONObject(outDict, options: jsonFormatOption, error:&error)\n\t}\n")
 	fileOut.write("}\n")
 
 def writeSwiftMethod( fileOut, method ):
@@ -357,7 +358,7 @@ def decorateSwiftInputType( objcInpTypeStr, inpType ):
 
 	if inpType.sType == 'rawstr':
 		prefix = objcInpTypeStr + ' == nil ? NSNull() : NSString(data:NSJSONSerialization.dataWithJSONObject(self.checkNil('
-		suffix =  ') , options: NSJSONWritingOptions.PrettyPrinted, error:&error)!, encoding: NSUTF8StringEncoding)!'
+		suffix =  ') , options: jsonFormatOption, error:&error)!, encoding: NSUTF8StringEncoding)!'
 	if inpType.sType == 'int64':
 		prefix = objcInpTypeStr + " == nil ? NSNull() : NSNumber(longLong: "
 		suffix = '!)'

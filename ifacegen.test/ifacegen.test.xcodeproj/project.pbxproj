@@ -188,12 +188,14 @@
 		5BE09E721A24753C00AEC506 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OTHER_SWIFT_FLAGS = "-D DEBUG";
 			};
 			name = Debug;
 		};
 		5BE09E731A24753C00AEC506 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OTHER_SWIFT_FLAGS = "";
 			};
 			name = Release;
 		};

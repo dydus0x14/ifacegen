@@ -43,7 +43,7 @@ class ifacegen_swift_test: XCTestCase {
         super.tearDown()
     }
     
-    func testSwiftSerealization() {
+    func testSwiftSerialization() {
         var error:NSError?
         let data = self.swEmployer.dump(&error)
         

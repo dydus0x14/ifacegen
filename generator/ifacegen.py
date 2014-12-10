@@ -270,7 +270,7 @@ def decorateOBJCInputType( objcInpTypeStr, inpType ):
 		prefix = '[NSNumber numberWithDouble:'
 		suffix = ']'
 	if inpType.sType == 'rawstr':
-		prefix = '[[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:'
+		prefix = objcInpTypeStr + ' == nil ? [NSNull null] : [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:'
 		suffix =  ' options:jsonFormatOption error:error] encoding:NSUTF8StringEncoding]'
 	return prefix + objcInpTypeStr + suffix
 
