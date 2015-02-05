@@ -28,6 +28,12 @@
 },
 
 {
+"procedure": "simpleCall",
+"prefix": "all",
+"response": { "code" : "int32" }
+},
+
+{
 "procedure": "getEmployees",
 "prefix": "emplyees",
 "request": {
