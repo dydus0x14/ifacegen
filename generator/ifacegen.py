@@ -25,6 +25,7 @@ import sys
 import types
 import os
 from collections import OrderedDict
+from string import Template
 
 variableCounter = 0
 def newVariableCounter():
@@ -115,9 +116,18 @@ def writeOBJCTypeDeclaration( fileOut, genType, writeConstructors, writeDump ):
 			fileOut.write("@property (nonatomic) " + assumeOBJCType( fieldType ) + fieldType.ptr + " " + genType.fieldAlias(fieldName) + ";\n")
 	fileOut.write("@end;\n");
 
+def writeOBJCMethodDeclarationArguments( fileOut, formalType, argDecoration, prefix ):
+	for argName in formalType.fieldNames():
+		argType = formalType.fieldType(argName)
+		argAlias = formalType.fieldAlias(argName)
+		typeStr = assumeOBJCType( argType )
+		fileOut.write( prefix + capitalizeFirstLetter( argAlias ) + ":(" + typeStr + argType.ptr + ")" + argAlias );
+		prefix = argDecoration + "and"
+	return prefix
+
 def writeOBJCMethodDeclaration( fileOut, method, implementation ):
 	argDecoration = " "
-	if len(method.prerequestTypes) + len(method.requestTypes) > 1:
+	if len(method.customRequestTypes) + len(method.requestJsonType.fieldNames()) > 1:
 		argDecoration = "\n\t\t"
 
 	if method.responseType is not None:
@@ -134,24 +144,11 @@ def writeOBJCMethodDeclaration( fileOut, method, implementation ):
 		fileOut.write( pref + "Prefix:(NSString*)prefix")
 		pref = argDecoration + "and"		
 
-	prerequestFormalType = method.formalPrerequestType();
-	requestFormalType = method.formalRequestType();
+	for customRequestParamKey in method.customRequestTypes.keys():
+		pref = writeOBJCMethodDeclarationArguments( fileOut, method.customRequestTypes[customRequestParamKey], argDecoration, pref )
 
-	if prerequestFormalType is not None:
-		for argName in prerequestFormalType.fieldNames():
-			argType = prerequestFormalType.fieldType(argName)
-			argAlias = prerequestFormalType.fieldAlias(argName)
-			typeStr = assumeOBJCType( argType )
-			fileOut.write( pref + capitalizeFirstLetter( argAlias ) + ":(" + typeStr + argType.ptr + ")" + argAlias );
-			pref = argDecoration + "and"
-
-	if len(method.requestTypes) != 0:
-		for argName in requestFormalType.fieldNames():
-			argType = requestFormalType.fieldType(argName)
-			argAlias = requestFormalType.fieldAlias(argName)
-			typeStr = assumeOBJCType( argType )
-			fileOut.write( pref + capitalizeFirstLetter( argAlias ) + ":(" + typeStr + argType.ptr + ")" + argAlias )
-			pref = argDecoration + "and"
+	if method.requestJsonType is not None:
+		pref = writeOBJCMethodDeclarationArguments( fileOut, method.requestJsonType, argDecoration, pref )
 
 	fileOut.write( pref + "Error:(NSError* __autoreleasing*)error")
 
@@ -201,7 +198,7 @@ def unwindReturnedTypeToOBJC( fileOut, objcDictName, outType, outArgName, level,
 		if outArgName is not None and outArgName != 'self':
 			currentDictName = objcDictName + capitalizeFirstLetter( outArgName ) + str( newVariableCounter() )
 			fileOut.write('\t'*level + 'NSDictionary* ' + currentDictName + ' = [' + objcDictName + ' objectForKey:@"' + outArgName + '"];\n')
-			fileOut.write('\t'*level + 'if ( ' + currentDictName + ' != nil && ![' + currentDictName + ' isEqual:[NSNull null]]) {\n')
+			fileOut.write('\t'*level + 'if ( ' + currentDictName + ' != nil && ![' + currentDictName + ' isEqual:[NSNull null]] && [' + currentDictName + ' isKindOfClass:NSDictionary.class]) {\n')
 			level += 1
  			fileOut.write( '\t'*level + resName + ' = [' + objCResType + ' new];\n' )
  		elif outArgName != 'self':
@@ -239,7 +236,7 @@ def unwindReturnedTypeToOBJC( fileOut, objcDictName, outType, outArgName, level,
 
 		fileOut.write('\t'*level + 'NSMutableArray* ' + resName + ';\n')
 
-		fileOut.write('\t'*level + 'if ( ' + currentArrayName + ' != nil && ![' + currentArrayName + ' isEqual:[NSNull null]]) {\n')
+		fileOut.write('\t'*level + 'if ( ' + currentArrayName + ' != nil && ![' + currentArrayName + ' isEqual:[NSNull null]] && [' + currentArrayName + ' isKindOfClass:NSArray.class]) {\n')
 		level += 1
 
 		fileOut.write('\t'*level + resName + ' = [NSMutableArray arrayWithCapacity:[' + currentArrayName + ' count]];\n')
@@ -340,50 +337,54 @@ def writeOBJCTypeImplementation( fileOut, genType, writeConstructors, writeDump 
 		fileOut.write('}\n')
 
 		writeOBJCTypeInitDictDeclaration( fileOut, implementation = True )
-		fileOut.write('{\n')
-		fileOut.write('\tif ( dictionary == nil ) return nil;\n')	
-		fileOut.write('\tif (self = [super init]) {\n')
-		fileOut.write('\t\t[self readDictionary:dictionary];\n')
-		fileOut.write('\t}\n\treturn self;\n}\n')
+		fileOut.write(""" {
+	if ( dictionary == nil ) return nil;
+	if (self = [super init]) {
+		[self readDictionary:dictionary];
+	}
+	return self;
+}
+""")
 
 		writeOBJCTypeInitDataDeclaration( fileOut, implementation = True )
-		fileOut.write('{\n')
-		fileOut.write('\tif ( jsonData == nil ) return nil;\n')		
-		fileOut.write('\tif (self = [super init]) {\n')
-		fileOut.write('\t\tNSDictionary* dict = [NSJSONSerialization JSONObjectWithData:jsonData options:NSJSONReadingAllowFragments error:error];\n');
-		fileOut.write('\t\tif ( *error != nil ) {\n\t\t\treturn nil;\n\t\t}\n')		
-		fileOut.write('\t\t[self readDictionary:dict];\n')
-		fileOut.write('\t}\n\treturn self;\n}\n')
+		fileOut.write(""" {
+	if ( jsonData == nil ) return nil;
+	if (self = [super init]) {
+		NSDictionary* dict = [NSJSONSerialization JSONObjectWithData:jsonData options:NSJSONReadingAllowFragments error:error];
+		if ( error && *error != nil ) return nil;
+		[self readDictionary:dict];
+	}
+	return self;
+}
+""")
 
 	fileOut.write("@end\n")
-						
+			
+def writeOBJCMethodCustomRequestParam( fileOut, customRequestParamName, customRequestParam ):
+	paramSelectorName = makeAlias( 'set_' + customRequestParamName )
+	fileOut.write('\tif (![transport respondsToSelector:@selector(' + paramSelectorName + ':)]) {\n\t\tassert("Transport does not respond to selector ' + paramSelectorName + ':");\n\t} ')
+	fileOut.write('else {\n\t\t[transport performSelector:@selector(' + paramSelectorName + ':) withObject:')
+	unwindInputTypeToOBJC( fileOut, customRequestParam, None, 3)
+	fileOut.write('\n\t\t];\n\t}\n')
+
 def writeOBJCMethodImplementation( fileOut, method ):
 	writeOBJCMethodDeclaration( fileOut, method, implementation = True )
+
 	fileOut.write(" {\n")
 
 	tmpVarName = "tmp"
 	fileOut.write('\tid ' + tmpVarName + ';\n')
 
-	prerequestFormalType = method.formalPrerequestType();
-	requestFormalType = method.formalRequestType();
-
-	pref = "\t\t"
-	if prerequestFormalType is not None:
-		fileOut.write('\t[transport setRequestParams:@{\n')
-		for argName in prerequestFormalType.fieldNames():
-			arg = prerequestFormalType.fieldType(argName)
-			argAlias = prerequestFormalType.fieldAlias(argName)
-			fileOut.write( pref + '@"' + argName + '" : ' + decorateOBJCInputType( argAlias, arg ) )
-			pref = ',\n\t\t'
-		fileOut.write('\n\t}];\n')
+	for customRequestParamKey in method.customRequestTypes.keys():
+		writeOBJCMethodCustomRequestParam( fileOut, customRequestParamKey, method.customRequestTypes[customRequestParamKey] )
 
 	methodPrefix = "prefix"
 	if method.prefix is not None:
 		methodPrefix = '@"' + method.prefix + '"'
 
-	if requestFormalType is not None:		
+	if method.requestJsonType is not None:		
 		fileOut.write("\tNSDictionary* inputDict = ")
-		unwindInputTypeToOBJC( fileOut, method.formalRequestType(), None, 2 )
+		unwindInputTypeToOBJC( fileOut, method.requestJsonType, None, 2 )
 		
 		fileOut.write(";\n")
 
@@ -406,13 +407,10 @@ def writeOBJCMethodImplementation( fileOut, method ):
 	fileOut.write('\t\treturn nil;\n\t}\n')
 
 	outputName = 'output'
-
-	outputStatement = 'NSDictionary* ' + outputName;
-	if isinstance( method.responseType, GenListType ):
-		outputStatement = 'NSArray* ' + outputName
+	outputStatement = 'id ' + outputName
 
 	fileOut.write('\t' + outputStatement + ' = [NSJSONSerialization JSONObjectWithData:outputData options:NSJSONReadingAllowFragments error:error];\n');
-	fileOut.write('\tif ( *error != nil ) {\n\t\treturn nil;\n\t}\n')
+	fileOut.write('\tif ( error && *error != nil ) {\n\t\treturn nil;\n\t}\n')
 
 	retVal = unwindReturnedTypeToOBJC( fileOut, outputName, method.responseType, method.responseArgName, 1, tmpVarName )
 
@@ -420,34 +418,63 @@ def writeOBJCMethodImplementation( fileOut, method ):
 	fileOut.write("}\n\n")
 
 def writeObjCIfaceHeader( fileOut, inputName ):
-	fileOut.write("\n#import <Foundation/Foundation.h>\n")
-	fileOut.write('#import "IFTransport.h"\n')
+	declaration = """
+#import <Foundation/Foundation.h>
+#import "IFTransport.h"
+"""
+	fileOut.write(declaration)
 
 def writeObjCIfaceImports( fileOut, importNames ):
 	for name in importNames:
 		fileOut.write('#import "%s.h"\n' % name)
 
 def writeObjCIfaceDeclaration( fileOut, inputName ):
-	fileOut.write("\n@interface " + inputName + ": NSObject\n")
-	fileOut.write("\n- (instancetype)initWithTransport:(id<IFTransport>)transport;\n\n")
+	declaration = Template("""
+@interface $inName: NSObject
+- (instancetype)initWithTransport:(id<IFTransport>)transport NS_DESIGNATED_INITIALIZER;
+""")
+	fileOut.write(declaration.substitute(inName=inputName))
 
 def writeObjCIfaceFooter( fileOut, inputName ):
 	fileOut.write("\n@end")
 
 def writeObjCImplHeader( fileOut, inputName ):
-	fileOut.write('#import "' + inputName + '.h"\n')
-	fileOut.write("#define NULLABLE( s ) (s == nil ? [NSNull null] : s)\n");
-	fileOut.write('static const NSUInteger jsonFormatOption = \n#ifdef DEBUG\nNSJSONWritingPrettyPrinted;\n#else\n0;\n#endif\n')
-	fileOut.write('\n#pragma clang diagnostic push\n#pragma clang diagnostic ignored "-Wunused"\n\n')
+	declaration = Template("""\
+#import "$inName.h"
+#define NULLABLE( s ) (s == nil ? [NSNull null] : s)
+static const NSUInteger jsonFormatOption = 
+#ifdef DEBUG
+	NSJSONWritingPrettyPrinted;
+#else
+	0;
+#endif
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused"
+#pragma clang diagnostic ignored "-Wundeclared-selector"
+
+""")
+	fileOut.write(declaration.substitute(inName=inputName))
 
 def writeObjCImplDeclaration( fileOut, inputName ):
-	fileOut.write("\n@interface " + inputName + "() {\n\tid<IFTransport> transport;\n}\n@end\n")
-	fileOut.write("\n@implementation " + inputName + "\n")
-	fileOut.write("\n- (instancetype)initWithTransport:(id<IFTransport>)trans {\n")
-	fileOut.write("\tif ( self = [super init] ) {\n\t\ttransport = trans;\n\t}\n\treturn self;\n}\n")
-	fileOut.write('- (NSError*)errorWithMessage:(NSString*)msg {\n')
-	fileOut.write('\tNSDictionary* errData = [NSDictionary dictionaryWithObject:msg forKey:NSLocalizedDescriptionKey];\n')
-	fileOut.write('\treturn [NSError errorWithDomain:NSStringFromClass([self class]) code:0 userInfo:errData];\n}\n')	
+	declaration = Template("""
+@interface $inName() {
+	id<IFTransport> transport;
+}
+@end
+
+@implementation $inName
+- (instancetype)initWithTransport:(id<IFTransport>)trans {
+	if ( self = [super init] ) {
+		transport = trans;
+	}
+	return self;
+}
+- (NSError*)errorWithMessage:(NSString*)msg {
+	return [NSError errorWithDomain:NSStringFromClass([self class]) code:0 userInfo:@{NSLocalizedDescriptionKey: msg}];
+}
+""")
+	fileOut.write(declaration.substitute(inName=inputName))
 
 def writeObjCImplFooter( fileOut, inputName ):
 	fileOut.write("\n@end")	
@@ -456,27 +483,38 @@ def writeObjCFooter( fileOut ):
 	fileOut.write('\n#pragma clang diagnostic pop\n')
 
 def writeWarning( fileOut, inputName ):
-	fileOut.write("/**\n")
-	fileOut.write(" * @generated\n *\n")
-	fileOut.write(" * AUTOGENERATED. DO NOT EDIT.\n *\n")
-	fileOut.write(" */\n\n")
+	declaration = """\
+/**
+ * @generated
+ *
+ * AUTOGENERATED. DO NOT EDIT! 
+ *
+ */
 
+"""
+	fileOut.write(declaration)
 
 #####################################
 
-def processJSONIface( jsonFile, typeNamePrefix, outDir ):
+def processJSONIface( jsonFile, verbose, typeNamePrefix, outDir, writeFullImplementation ):
 
 	if outDir is not None:
 		genDir = os.path.abspath( outDir )
 
 	if typeNamePrefix is not None:
+		GenModule.namePrefix = typeNamePrefix
 		GenType.namePrefix = typeNamePrefix
-		GenMethod.namePrefix = typeNamePrefix
 
 	module = parseModule( jsonFile )
 	if module is None:
-		print "Can't load module " + jsonFile;
+		print("Can't load module " + jsonFile)
 		return
+
+	if verbose:
+		for genTypeKey in module.typeList.keys():
+			print( str( module.typeList[genTypeKey] ) + '\n' )
+		for method in module.methods:
+			print( str( method ) + '\n' )
 
 	if not os.path.exists( genDir ):
 	    os.makedirs( genDir )
@@ -493,7 +531,7 @@ def processJSONIface( jsonFile, typeNamePrefix, outDir ):
 	writeObjCImplHeader( objCImpl, module.name )			
 
 	for genTypeKey in module.typeList.keys():
-		writeAll = ( genTypeKey in module.structs )							
+		writeAll = writeFullImplementation or ( genTypeKey in module.structs )						
 		writeOBJCTypeDeclaration( objCIface, module.typeList[genTypeKey], writeDump=writeAll, writeConstructors=writeAll )
 		writeOBJCTypeImplementation( objCImpl, module.typeList[genTypeKey], writeDump=writeAll, writeConstructors=writeAll )
 
@@ -518,6 +556,8 @@ def main():
 	
 	parser.add_argument('rpcInput', metavar='I', type=unicode, nargs = '+', help = 'Input JSON RPC files')
 	parser.add_argument('--prefix', action='store', required=False, help='Class and methods prefix')
+	parser.add_argument('--writefull', action='store_true', required=False, help='Indicates that it is needed to write full set of initializers for all the structs found in IDL')
+	parser.add_argument('--verbose', action='store_true', required=False, help='Verbose mode')
 	parser.add_argument('-o', '--outdir', action='store', default="gen-objc", required=False, help="Output directory name")
 
 	parsedArgs = parser.parse_args()
@@ -527,7 +567,7 @@ def main():
 
 	try:
 		for rpcInput in parsedArgs.rpcInput:
-			processJSONIface( rpcInput, parsedArgs.prefix, parsedArgs.outdir )
+			processJSONIface( rpcInput, parsedArgs.verbose, parsedArgs.prefix, parsedArgs.outdir, parsedArgs.writefull )
 	except Exception as ex:
 		print( str(ex) )
 		sys.exit(1)

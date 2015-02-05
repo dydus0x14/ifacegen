@@ -169,45 +169,27 @@ class GenListType( GenType ):
 		return "GenListType " + self.name + ", item: " + str( self.itemType )
 
 class GenMethod:
-	namePrefix = ""
 	def __init__( self, name, prefix ):
-		if len( GenMethod.namePrefix ) and not name.startswith( GenMethod.namePrefix ):
-			self.name = GenMethod.namePrefix + name
-		else:
-			self.name = name
+		self.name = name
 		self.prefix = prefix
-		self.requestTypes = OrderedDict()
-		self.prerequestTypes = OrderedDict()
+		self.requestJsonType = None
+		self.customRequestTypes = OrderedDict()
 		self.responseType = None
 		self.responseArgName = None
 
-	def formalRequestType( self ):
-		if len( self.requestTypes ) == 0:
-			return None
-
-		tp = GenComplexType( "", self.name )
-		for k in self.requestTypes.keys():
-			tp.addFieldType( k, self.requestTypes[k] )
-		return tp
-
-	def formalPrerequestType( self ):
-		if len( self.prerequestTypes ) == 0:
-			return None
-
-		tp = GenComplexType( "Pre", self.name )
-		for k in self.prerequestTypes.keys():
-			tp.addFieldType( k, self.prerequestTypes[k] )
-		return tp;
-
 	def __str__(self):
-		return "GenMethod " + self.name + ": ntREQ: " + strFromDictionary( self.requestTypes ) + "ntRESP: " + str( self.responseType )
+		return "GenMethod " + self.name + ": JSON params: " + str( self.requestJsonType ) + ", Custom params: " + strFromDictionary(self.customRequestTypes) + ", Response type: " + str( self.responseType )
 
 class GenModule:
+	namePrefix = ""
 	def __init__( self, name ):
 		self.typeList = OrderedDict()
 		self.methods = []
 		self.structs = []
-		self.name = name
+		if len(GenModule.namePrefix) and not name.startswith( GenModule.namePrefix ):
+			self.name = GenModule.namePrefix + capitalizeFirstLetter(name)
+		else:
+			self.name = name
 		self.importedModuleNames = []
 		self.importedTypeList = OrderedDict()
 

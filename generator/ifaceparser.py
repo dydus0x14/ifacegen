@@ -73,37 +73,40 @@ def buildTypeFromStructJSON( jsonItem, typeList, importedTypeList ):
 
 def buildMethodFromJSON( jsonItem, typeList, importedTypeList ):
 
-	methodName = jsonItem["procedure"]
-	response = jsonItem["response"]
-
 	prefix = None
-	if 'prefix' in jsonItem.keys():
-		prefix = jsonItem["prefix"]
-
-	prerequest = None
-	if "prerequest" in jsonItem.keys():
-		prerequest = jsonItem["prerequest"]
-
+	methodName = None
 	request = None
-	if "request" in jsonItem.keys():
-		request = jsonItem["request"]
+	customRequests = OrderedDict()
+	response = None
+
+	for methodKey in jsonItem.keys():
+		if methodKey == "procedure":
+			methodName = jsonItem["procedure"]
+		elif methodKey == "prefix":
+			prefix = jsonItem["prefix"]
+		elif methodKey == "response":
+			response = jsonItem["response"]
+		elif methodKey == "request":
+			request = jsonItem["request"]
+		else:
+			customRequests[methodKey] = jsonItem[methodKey]
+
+	print("Method: " + methodName)
+
+	if methodName is None:
+		raise Exception("No method name provided for method in IDL: %s" % jsonItem)
 
 	method = GenMethod( methodName, prefix )
-	typeDecoration = capitalizeFirstLetter( methodName )	
+	typeDecoration = capitalizeFirstLetter( methodName )
 
 	if request is not None:
-		for k in request.keys():
-			argument = request[k]
-			method.requestTypes[k] = typeFromJSON( typeDecoration, k, argument, typeList, importedTypeList )
+		requestTypeName = "%s_json_args" % methodName
+		method.requestJsonType = typeFromJSON( None, requestTypeName, request, typeList, importedTypeList )
 
-	if prerequest is not None:
-		for k in prerequest.keys():
-			argument = prerequest[k]
-			tp = typeFromJSON( typeDecoration, k, argument, typeList, importedTypeList )
-			if isinstance( tp, GenIntegralType ):
-				method.prerequestTypes[k] = tp
-			else:
-				raise Exception("Only integral types allowed in pre-request arguments: %s, %s:%s" % k, methodName, tp.name )
+	for customRequestKey in customRequests.keys():
+		customRequest = customRequests[customRequestKey]
+		customRequestTypeName = "%s_%s_args" % (methodName, customRequestKey)
+		method.customRequestTypes[customRequestKey] = typeFromJSON( None, customRequestTypeName, customRequest, typeList, importedTypeList )
 
 	# flatten return type if it is only one filed in dictionary
 	if len( response ) == 1:
