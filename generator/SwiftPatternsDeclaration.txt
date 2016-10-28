@@ -1,0 +1,117 @@
+
+//// Common declaration
+
+#HeaderFileDeclaration ::= 
+	%Concrete string value%
+ 
+#ImportSectionDeclaration = 
+	[ #ImportDeclaration ]
+
+#ImportDeclaration ::= 
+	%Swift/ObjC import%
+
+#ProperyDeclaration ::=
+ 	var #PropertyName: #PropertyType#OptionalModifier
+ 
+#PropertyName ::=
+ 	%Concrete string value%
+
+#VarName ::=
+ 	%Concrete string value%
+ 
+#PropertyType ::=
+ 	Int | Bool | String | [#PropertyType] | [#PropertyType: #PropertyType] | #ClassName ...
+ 
+#OptionalModifier ::=
+ 	? | !
+
+#ErrorDeclaration ::=
+	NSError(description: %Concrete string value%)
+
+#ParseMandatoryArrayDeclaration ::= 
+	func parsaMandatoryArray<T>(json: AnyObject?, @escaping itemHandler: AnyObject? throws -> T) throws -> [T] {
+		guard let result = json as? [AnyObject] else {
+			throw #ErrorDeclaration
+		}
+		return result.map{ try itemHandler($0) }
+	}
+
+#ParseMandatoryArrayDeclaration ::= 
+	func parsaOptionalArray<T>(json: AnyObject?, @escaping itemHandler: AnyObject? -> T?) -> [T]? {
+		guard let result = json as? [AnyObject] else {
+			return nil
+		}
+		return result.flatMap{ itemHandler($0) }
+	}
+
+
+//// Data structures declaration 
+
+#DataStructureModuleDeclaration ::= 
+	#HeaderFileDeclaration 
+	#ImportSectionDeclaration 
+	#DataStructureListDeclaration
+ 
+#DataStructureListDeclaration ::= 
+	[ #DataStructureDeclaration ]
+
+#DataStructureDeclaration ::= 
+
+	 #ClassDeclaration {
+	    #ProperyListDeclaration
+	 }
+
+#ClassDeclaration ::=	 
+	class #ClassName
+
+#ClassDeclaration ::=	 
+	class #ClassName: #ClassName
+
+#ClassName ::=
+	%Concrete string value%
+
+#ProperyListDeclaration ::=
+ 	[ #ProperyDeclaration ]
+
+//// Parsing data structures declation
+
+#ParseModuleDeclaration ::= 
+	#HeaderFileDeclaration 
+	#ImportSectionDeclaration 
+	#ParseListDeclaration
+
+#ParseListDeclaration ::=
+	[ ParseFuncDeclaration ]
+
+#ParseFuncDeclaration ::=
+	func parse#ClassName(json json: AnyObject?) throws -> #ClassName {
+		#ParseDataGuardDeclaration
+		#ProperyDeclaration
+		#ParseMandatoryFields
+		#ParseOptionalFields
+		return #PropertyName
+	}
+
+#ParseDataGuardDeclaration ::=
+	guard let #PropertyName = #PropertyName as? #PropertyType else {
+		throw #ErrorDeclaration
+	}
+
+#ParseMandatoryFields ::=
+	[ #ParseMandatoryField ]
+
+#ParseOptionalFields ::=
+	[ #ParseOptionalField ]
+ 
+#ParseMandatoryField ::=
+ 	#VarName.#PropertyName = try parse#ParseFuncPostfix(json: json[%Concrete string value%])
+
+#ParseOptionalField ::=
+	#VarName.#PropertyName = parse#ParseFuncPostfix(json: json[%Concrete string value%])
+
+#ParseFuncPostfix ::=
+	$ | #ClassName | Array#ClassName
+
+///// Dumping data structures declaration
+
+
